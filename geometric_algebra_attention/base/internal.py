@@ -1,14 +1,17 @@
 import collections
 import itertools
 import math
+
 import numpy as np
 
 HUGE_FLOAT = 1e9
+
 
 class Namespace:
     def __init__(self, **kwargs):
         for (name, val) in kwargs.items():
             setattr(self, name, val)
+
 
 class AttentionBase:
     r"""Calculates geometric product attention.
@@ -82,29 +85,41 @@ class AttentionBase:
 
     """
 
-    InputType = collections.namedtuple(
-        'InputType', ['positions', 'values', 'weights'])
+    InputType = collections.namedtuple("InputType", ["positions", "values", "weights"])
 
     WeightDefinition = collections.namedtuple(
-        'WeightDefinition', ['name', 'shape', 'stdev'])
+        "WeightDefinition", ["name", "shape", "stdev"]
+    )
 
     WeightDefinitionSet = collections.namedtuple(
-        'WeightDefinitionSet', ['groups', 'singles'])
+        "WeightDefinitionSet", ["groups", "singles"]
+    )
 
     ProductType = collections.namedtuple(
-        'ProductType', ['rank', 'products', 'invariants', 'covariants'])
+        "ProductType", ["rank", "products", "invariants", "covariants"]
+    )
 
     ProductSummaryType = collections.namedtuple(
-        'ProductSummaryType', ['summary', 'broadcast_indices', 'weights', 'values'])
+        "ProductSummaryType", ["summary", "broadcast_indices", "weights", "values"]
+    )
 
     OutputType = collections.namedtuple(
-        'OutputType', ['attention', 'output', 'invariants', 'invariant_values',
-                       'tuple_values'])
+        "OutputType",
+        ["attention", "output", "invariants", "invariant_values", "tuple_values"],
+    )
 
-    def __init__(self, score_net, value_net, reduce=True,
-                 merge_fun='mean', join_fun='mean', rank=2,
-                 invariant_mode='single', covariant_mode='single',
-                 include_normalized_products=False):
+    def __init__(
+        self,
+        score_net,
+        value_net,
+        reduce=True,
+        merge_fun="mean",
+        join_fun="mean",
+        rank=2,
+        invariant_mode="single",
+        covariant_mode="single",
+        include_normalized_products=False,
+    ):
         self.score_net = score_net
         self.value_net = value_net
         self.reduce = reduce
@@ -116,28 +131,33 @@ class AttentionBase:
         self.include_normalized_products = include_normalized_products
 
         for mode in [invariant_mode, covariant_mode]:
-            assert mode in ['full', 'partial', 'single']
+            assert mode in ["full", "partial", "single"]
 
     @property
     def invariant_dims(self):
         return self.get_invariant_dims(
-            self.rank, self.invariant_mode, self.include_normalized_products)
+            self.rank, self.invariant_mode, self.include_normalized_products
+        )
 
     def _build_weight_definitions(self, n_dim):
         result = self.WeightDefinitionSet({}, {})
 
-        if self.merge_fun == 'concat':
-            stdev = math.sqrt(2./self.rank/n_dim)
-            result.groups['merge_kernels'] = [self.WeightDefinition(
-                'merge_kernel_{}'.format(i), (n_dim, n_dim), stdev)
-                                       for i in range(self.rank)]
+        if self.merge_fun == "concat":
+            stdev = math.sqrt(2.0 / self.rank / n_dim)
+            result.groups["merge_kernels"] = [
+                self.WeightDefinition(
+                    "merge_kernel_{}".format(i), (n_dim, n_dim), stdev
+                )
+                for i in range(self.rank)
+            ]
 
-        if self.join_fun == 'concat':
+        if self.join_fun == "concat":
             # always joining neighborhood values and invariant values
-            stdev = math.sqrt(2./2/n_dim)
-            result.groups['join_kernels'] = [self.WeightDefinition(
-                'join_kernel_{}'.format(i), (n_dim, n_dim), stdev)
-                                      for i in range(2)]
+            stdev = math.sqrt(2.0 / 2 / n_dim)
+            result.groups["join_kernels"] = [
+                self.WeightDefinition("join_kernel_{}".format(i), (n_dim, n_dim), stdev)
+                for i in range(2)
+            ]
 
         return result
 
@@ -145,12 +165,17 @@ class AttentionBase:
         dims, reduce_axes = self._get_reduction()
 
         shape = self.math.concat(
-            [self.math.asarray(old_shape[:dims]),
-             self.math.product(self.math.asarray(old_shape[dims:]), 0,
-                               keepdims=True)], -1)
+            [
+                self.math.asarray(old_shape[:dims]),
+                self.math.product(
+                    self.math.asarray(old_shape[dims:]), 0, keepdims=True
+                ),
+            ],
+            -1,
+        )
         scores = self.math.reshape(scores, shape)
         attention = self.math.reshape(self.math.softmax(scores), old_shape)
-        output = self.math.sum(attention*values, reduce_axes)
+        output = self.math.sum(attention * values, reduce_axes)
 
         return attention, output
 
@@ -160,23 +185,23 @@ class AttentionBase:
         invar_values = self.value_net(products.summary.invariants)
 
         joined_values = self._join_fun(invar_values, products.values)
-        new_values = products.weights*joined_values
+        new_values = products.weights * joined_values
 
         scores = self.score_net(joined_values)
         old_shape = self.math.shape(scores)
 
         scores = self._mask_scores(scores, products.broadcast_indices, mask)
 
-        attention, output = self._calculate_attention(
-            scores, new_values, old_shape)
+        attention, output = self._calculate_attention(scores, new_values, old_shape)
 
         return self.OutputType(
-            attention, output, products.summary.invariants, invar_values, new_values)
+            attention, output, products.summary.invariants, invar_values, new_values
+        )
 
     def _get_broadcast_indices(self):
         broadcast_indices = []
         for i in range(self.rank):
-            index = [Ellipsis] + [None]*(self.rank) + [slice(None)]
+            index = [Ellipsis] + [None] * (self.rank) + [slice(None)]
             index[i - self.rank - 1] = slice(None)
             broadcast_indices.append(tuple(index))
         return broadcast_indices
@@ -219,12 +244,15 @@ class AttentionBase:
         return dims, reduce_axes
 
     def _join_fun(self, *args):
-        if self.join_fun == 'mean':
-            return sum(args)/float(len(args))
-        elif self.join_fun == 'concat':
+        if self.join_fun == "mean":
+            return sum(args) / float(len(args))
+        elif self.join_fun == "concat":
             return sum(
-                [self.math.tensordot(x, b, 1) for (x, b) in
-                 zip(args, self.join_kernels)])
+                [
+                    self.math.tensordot(x, b, 1)
+                    for (x, b) in zip(args, self.join_kernels)
+                ]
+            )
         else:
             raise NotImplementedError()
 
@@ -236,40 +264,50 @@ class AttentionBase:
         for (inp, broadcast) in zip(inputs, broadcast_indices):
             weights = inp.weights
             if isinstance(weights, int):
-                result = result*float(weights)
+                result = result * float(weights)
                 continue
             expanded_weights = weights[..., None][broadcast]
-            result = result*expanded_weights
-        return self.math.pow(result, 1./self.rank)
+            result = result * expanded_weights
+        return self.math.pow(result, 1.0 / self.rank)
 
     def _mask_scores(self, scores, broadcast_indices, mask):
         if mask is not None:
             parsed_mask = self._parse_inputs(mask, is_mask=True)
             if any(p.positions is not None for p in parsed_mask):
-                masks = [self.math.bool_to_int(p.positions[..., None][idx])
-                         for (p, idx) in zip(parsed_mask, broadcast_indices)
-                         if p.positions is not None]
+                masks = [
+                    self.math.bool_to_int(p.positions[..., None][idx])
+                    for (p, idx) in zip(parsed_mask, broadcast_indices)
+                    if p.positions is not None
+                ]
                 position_mask = sum(masks) == len(masks)
             else:
                 position_mask = True
             if any(p.values is not None for p in parsed_mask):
-                masks = [self.math.bool_to_int(p.values[..., None][idx])
-                         for (p, idx) in zip(parsed_mask, broadcast_indices)
-                         if p.values is not None]
+                masks = [
+                    self.math.bool_to_int(p.values[..., None][idx])
+                    for (p, idx) in zip(parsed_mask, broadcast_indices)
+                    if p.values is not None
+                ]
                 value_mask = sum(masks) == len(masks)
             else:
                 value_mask = True
             product_mask = self.math.logical_and(position_mask, value_mask)
-            scores = self.math.where(product_mask, scores, self.math.asarray(-HUGE_FLOAT))
+            scores = self.math.where(
+                product_mask, scores, self.math.asarray(-HUGE_FLOAT)
+            )
         return scores
 
     def _merge_fun(self, *args):
-        if self.merge_fun == 'mean':
-            return sum(args)/float(len(args))
-        elif self.merge_fun == 'concat':
+        if self.merge_fun == "mean":
+            return sum(args) / float(len(args))
+        elif self.merge_fun == "concat":
             return sum(
-                [self.math.tensordot(x, b, 1) for (x, b) in
-                 zip(args, self.merge_kernels) if x is not None])
+                [
+                    self.math.tensordot(x, b, 1)
+                    for (x, b) in zip(args, self.merge_kernels)
+                    if x is not None
+                ]
+            )
         else:
             raise NotImplementedError()
 
@@ -282,7 +320,7 @@ class AttentionBase:
                 inputs + 1
                 # inputs was just a single mask value
                 inputs = [inputs]
-            except TypeError: # inputs was a list/tuple already
+            except TypeError:  # inputs was a list/tuple already
                 pass
         else:
             inputs = list(inputs)
@@ -290,7 +328,7 @@ class AttentionBase:
         if not isinstance(inputs[0], (list, tuple)):
             inputs = [inputs]
 
-        for piece in (self.rank*inputs)[:self.rank]:
+        for piece in (self.rank * inputs)[: self.rank]:
             if len(piece) == 2:
                 (r, v) = piece
                 w = 1
@@ -303,6 +341,7 @@ class AttentionBase:
                 raise NotImplementedError(piece)
             result.append(self.InputType(r, v, w))
         return result
+
 
 class LabeledAttentionBase:
     r"""Use labels to translate one point cloud to another.
@@ -340,13 +379,15 @@ class LabeledAttentionBase:
     :param include_normalized_products: If True, for whatever set of products that will be computed (for a given `invariant_mode`), also include the normalized multivector for each product
 
     """
+
     def _build_weight_definitions(self, n_dim):
         result = super()._build_weight_definitions(n_dim)
 
-        if self.join_fun == 'concat':
-            stdev = math.sqrt(2./3./n_dim)
-            result.groups['join_kernels'].append(self.WeightDefinition(
-                'join_kernel_2', [n_dim, n_dim], stdev))
+        if self.join_fun == "concat":
+            stdev = math.sqrt(2.0 / 3.0 / n_dim)
+            result.groups["join_kernels"].append(
+                self.WeightDefinition("join_kernel_2", [n_dim, n_dim], stdev)
+            )
 
         return result
 
@@ -359,24 +400,26 @@ class LabeledAttentionBase:
         swap_i = -self.rank - 2
         swap_j = -2
         child_expand_indices = list(products.broadcast_indices[-1])
-        child_expand_indices[swap_i], child_expand_indices[swap_j] = \
-            child_expand_indices[swap_j], child_expand_indices[swap_i]
+        child_expand_indices[swap_i], child_expand_indices[swap_j] = (
+            child_expand_indices[swap_j],
+            child_expand_indices[swap_i],
+        )
         child_values = child_values[tuple(child_expand_indices)]
 
         joined_values = self._join_fun(child_values, invar_values, products.values)
         covariants = self._covariants(products.summary.covariants)
-        new_values = covariants*self.scale_net(joined_values)
+        new_values = covariants * self.scale_net(joined_values)
 
         scores = self.score_net(joined_values)
         old_shape = self.math.shape(scores)
 
         scores = self._mask_scores(scores, products.broadcast_indices, mask)
 
-        attention, output = self._calculate_attention(
-            scores, new_values, old_shape)
+        attention, output = self._calculate_attention(scores, new_values, old_shape)
 
         return self.OutputType(
-            attention, output, products.summary.invariants, invar_values, new_values)
+            attention, output, products.summary.invariants, invar_values, new_values
+        )
 
     def _get_product_summary(self, inputs):
         products = super()._get_product_summary(inputs)
@@ -386,7 +429,7 @@ class LabeledAttentionBase:
             idx.insert(-1 - self.rank, None)
             broadcast_indices.append(idx)
 
-        index = tuple([Ellipsis, None] + (self.rank + 1)*[slice(None)])
+        index = tuple([Ellipsis, None] + (self.rank + 1) * [slice(None)])
         invars = products.summary.invariants[index]
         covars = [r[index] for r in products.summary.covariants]
         new_vs = products.values[index]
@@ -403,8 +446,11 @@ class LabeledAttentionBase:
         if mask is not None:
             (child_mask, other_mask) = mask
             masked_scores = AttentionBase._mask_scores(
-                self, scores, broadcast_indices, other_mask)
+                self, scores, broadcast_indices, other_mask
+            )
             if child_mask is not None:
-                index = tuple([Ellipsis, slice(None)] + (self.rank + 1)*[None])
-                masked_scores = self.math.where(child_mask[index], masked_scores, -HUGE_FLOAT)
+                index = tuple([Ellipsis, slice(None)] + (self.rank + 1) * [None])
+                masked_scores = self.math.where(
+                    child_mask[index], masked_scores, -HUGE_FLOAT
+                )
         return masked_scores

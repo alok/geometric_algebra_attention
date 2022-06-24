@@ -1,7 +1,7 @@
-
 from tensorflow import keras
 
 from ..tensorflow.VectorAttention import VectorAttention as TFAttention
+
 
 class AttentionBase:
     algebra = TFAttention.algebra
@@ -14,7 +14,7 @@ class AttentionBase:
         try:
             n_dim = input_shape[0][1][-1]
         except TypeError:
-        # scenario 2: inputs are (x, v) or (x, v, w)
+            # scenario 2: inputs are (x, v) or (x, v, w)
             n_dim = input_shape[1][-1]
         weight_sets = self._build_weight_definitions(n_dim)
         for (name, defs) in weight_sets.groups.items():
@@ -22,15 +22,18 @@ class AttentionBase:
                 self.add_weight(
                     name=def_.name,
                     initializer=keras.initializers.RandomNormal(stddev=def_.stdev),
-                    shape=def_.shape)
-                for def_ in defs]
+                    shape=def_.shape,
+                )
+                for def_ in defs
+            ]
             setattr(self, name, weights)
 
         for (name, def_) in weight_sets.singles.items():
             weight = self.add_weight(
                 name=def_.name,
                 initializer=keras.initializers.RandomNormal(stddev=def_.stdev),
-                shape=def_.shape)
+                shape=def_.shape,
+            )
             setattr(self, name, weight)
 
     def call(self, inputs, return_invariants=False, return_attention=False, mask=None):
@@ -63,19 +66,19 @@ class AttentionBase:
     @classmethod
     def from_config(cls, config):
         new_config = dict(config)
-        for key in ('score_net', 'value_net'):
+        for key in ("score_net", "value_net"):
             new_config[key] = keras.models.Sequential.from_config(new_config[key])
         return cls(**new_config)
 
     def get_config(self):
         result = super().get_config()
-        result['score_net'] = self.score_net.get_config()
-        result['value_net'] = self.value_net.get_config()
-        result['reduce'] = self.reduce
-        result['merge_fun'] = self.merge_fun
-        result['join_fun'] = self.join_fun
-        result['rank'] = self.rank
-        result['invariant_mode'] = self.invariant_mode
-        result['covariant_mode'] = self.covariant_mode
-        result['include_normalized_products'] = self.include_normalized_products
+        result["score_net"] = self.score_net.get_config()
+        result["value_net"] = self.value_net.get_config()
+        result["reduce"] = self.reduce
+        result["merge_fun"] = self.merge_fun
+        result["join_fun"] = self.join_fun
+        result["rank"] = self.rank
+        result["invariant_mode"] = self.invariant_mode
+        result["covariant_mode"] = self.covariant_mode
+        result["include_normalized_products"] = self.include_normalized_products
         return result

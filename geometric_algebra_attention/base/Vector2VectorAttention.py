@@ -1,4 +1,3 @@
-
 class Vector2VectorAttention:
     r"""Calculate rotation-covariant (vector-valued) geometric product attention.
 
@@ -38,6 +37,7 @@ class Vector2VectorAttention:
     :param convex_covariants: If True, use a convex combination of the rotation-covariant inputs (including the origin (0, 0, 0)) available, rather than an arbitrary linear combination
 
     """
+
     def __init__(self, scale_net, convex_covariants=False):
         self.scale_net = scale_net
         self.convex_covariants = convex_covariants
@@ -45,9 +45,9 @@ class Vector2VectorAttention:
     @property
     def input_vector_count(self):
         result = 1
-        if self.covariant_mode == 'full':
-            result = self.rank*(self.rank + 1)//2
-        elif self.covariant_mode == 'partial':
+        if self.covariant_mode == "full":
+            result = self.rank * (self.rank + 1) // 2
+        elif self.covariant_mode == "partial":
             result = self.rank
         if self.include_normalized_products:
             result *= 2
@@ -57,8 +57,9 @@ class Vector2VectorAttention:
         result = super()._build_weight_definitions(n_dim)
 
         if self.input_vector_count > 1:
-            result.singles['vector_kernels'] = self.WeightDefinition(
-                'vector_kernels', [self.input_vector_count], .05)
+            result.singles["vector_kernels"] = self.WeightDefinition(
+                "vector_kernels", [self.input_vector_count], 0.05
+            )
 
         return result
 
@@ -67,13 +68,12 @@ class Vector2VectorAttention:
             return covariants_[0]
 
         if self.convex_covariants:
-            weights = self.math.concat([self.vector_kernels, [0.]], axis=-1)
+            weights = self.math.concat([self.vector_kernels, [0.0]], axis=-1)
             weights = self.math.softmax(weights)
         else:
             weights = self.vector_kernels
 
-        covariants = [
-            vec*weights[i] for (i, vec) in enumerate(covariants_)]
+        covariants = [vec * weights[i] for (i, vec) in enumerate(covariants_)]
         return sum(covariants)
 
     def _evaluate(self, inputs, mask=None):
@@ -83,15 +83,15 @@ class Vector2VectorAttention:
 
         joined_values = self._join_fun(invar_values, products.values)
         covariants = self._covariants(products.summary.covariants)
-        new_values = products.weights*covariants*self.scale_net(joined_values)
+        new_values = products.weights * covariants * self.scale_net(joined_values)
 
         scores = self.score_net(joined_values)
         old_shape = self.math.shape(scores)
 
         scores = self._mask_scores(scores, products.broadcast_indices, mask)
 
-        attention, output = self._calculate_attention(
-            scores, new_values, old_shape)
+        attention, output = self._calculate_attention(scores, new_values, old_shape)
 
         return self.OutputType(
-            attention, output, products.summary.invariants, invar_values, new_values)
+            attention, output, products.summary.invariants, invar_values, new_values
+        )

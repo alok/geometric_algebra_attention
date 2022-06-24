@@ -1,6 +1,6 @@
-
 import tensorflow as tf
 from tensorflow import keras
+
 
 class MomentumNormalization(keras.layers.Layer):
     """Exponential decay normalization.
@@ -16,8 +16,10 @@ class MomentumNormalization(keras.layers.Layer):
     :param use_std: If True (default), calculate and apply a standard deviation scaling factor
 
     """
-    def __init__(self, momentum=.99, epsilon=1e-7, use_mean=True,
-                 use_std=True, *args, **kwargs):
+
+    def __init__(
+        self, momentum=0.99, epsilon=1e-7, use_mean=True, use_std=True, *args, **kwargs
+    ):
         self.momentum = momentum
         self.epsilon = epsilon
         self.use_mean = use_mean
@@ -29,9 +31,11 @@ class MomentumNormalization(keras.layers.Layer):
         shape = [input_shape[-1]]
 
         self.mu = self.add_weight(
-            name='mu', shape=shape, initializer='zeros', trainable=False)
+            name="mu", shape=shape, initializer="zeros", trainable=False
+        )
         self.sigma = self.add_weight(
-            name='sigma', shape=shape, initializer='ones', trainable=False)
+            name="sigma", shape=shape, initializer="ones", trainable=False
+        )
 
     def call(self, inputs, training=False, mask=None):
         if training:
@@ -42,23 +46,24 @@ class MomentumNormalization(keras.layers.Layer):
                 values = inputs
             mean = tf.math.reduce_mean(values, axis=axes, keepdims=False)
             std = tf.math.reduce_std(values, axis=axes, keepdims=False)
-            self.mu.assign(self.momentum*self.mu + (1 - self.momentum)*mean)
-            self.sigma.assign(self.momentum*self.sigma + (1 - self.momentum)*std)
+            self.mu.assign(self.momentum * self.mu + (1 - self.momentum) * mean)
+            self.sigma.assign(self.momentum * self.sigma + (1 - self.momentum) * std)
 
-        mu = self.mu*tf.cast(self.use_mean, tf.float32)
+        mu = self.mu * tf.cast(self.use_mean, tf.float32)
         use_std = tf.cast(self.use_std, tf.float32)
-        denominator = use_std*(self.sigma + self.epsilon) + (1 - use_std)*1.
-        result = (inputs - mu)/denominator
+        denominator = use_std * (self.sigma + self.epsilon) + (1 - use_std) * 1.0
+        result = (inputs - mu) / denominator
         if mask is not None:
             return tf.where(mask, result, inputs)
         return result
 
     def get_config(self):
         result = super().get_config()
-        result['momentum'] = self.momentum
-        result['epsilon'] = self.epsilon
-        result['use_mean'] = self.use_mean
-        result['use_std'] = self.use_std
+        result["momentum"] = self.momentum
+        result["epsilon"] = self.epsilon
+        result["use_mean"] = self.use_mean
+        result["use_std"] = self.use_std
         return result
 
-keras.utils.get_custom_objects()['MomentumNormalization'] = MomentumNormalization
+
+keras.utils.get_custom_objects()["MomentumNormalization"] = MomentumNormalization

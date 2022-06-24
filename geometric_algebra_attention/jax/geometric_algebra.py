@@ -1,10 +1,11 @@
-
 import jax
 import jax.numpy as jnp
+
 
 @jax.custom_jvp
 def custom_norm(x):
     return jnp.linalg.norm(x, axis=-1, keepdims=True)
+
 
 @custom_norm.defjvp
 def custom_norm_jvp(primals, tangents):
@@ -12,8 +13,9 @@ def custom_norm_jvp(primals, tangents):
     (x_dot,) = tangents
 
     y = custom_norm(x)
-    y_dot = jnp.sum(x_dot*x, axis=-1, keepdims=True)/(y + 1e-19)
+    y_dot = jnp.sum(x_dot * x, axis=-1, keepdims=True) / (y + 1e-19)
     return y, y_dot
+
 
 def bivec_dual(b):
     """scalar + bivector -> vector + trivector
@@ -22,13 +24,11 @@ def bivec_dual(b):
     bivector) with basis (1, e12, e13, e23).
 
     """
-    swizzle = jnp.array([
-        [0, 0, 0, -1],
-        [0, 0, 1, 0],
-        [0, -1, 0, 0],
-        [1, 0, 0, 0]
-    ], dtype=b.dtype)
+    swizzle = jnp.array(
+        [[0, 0, 0, -1], [0, 0, 1, 0], [0, -1, 0, 0], [1, 0, 0, 0]], dtype=b.dtype
+    )
     return jnp.tensordot(b, swizzle, 1)
+
 
 def vecvec(a, b):
     """vector*vector -> scalar + bivector
@@ -38,25 +38,29 @@ def vecvec(a, b):
     e23).
 
     """
-    products = a[..., jnp.newaxis]*b[..., jnp.newaxis, :]
+    products = a[..., jnp.newaxis] * b[..., jnp.newaxis, :]
     old_shape = jnp.shape(products)
     new_shape = list(old_shape[:-2]) + [9]
     products = jnp.reshape(products, new_shape)
     # 0 1 2
     # 3 4 5
     # 6 7 8
-    swizzle = jnp.array([
-        [1, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, 0],
-        [0, -1, 0, 0],
-        [1, 0, 0, 0],
-        [0, 0, 0, 1],
-        [0, 0, -1, 0],
-        [0, 0, 0, -1],
-        [1, 0, 0, 0],
-    ], dtype=products.dtype)
+    swizzle = jnp.array(
+        [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, -1, 0, 0],
+            [1, 0, 0, 0],
+            [0, 0, 0, 1],
+            [0, 0, -1, 0],
+            [0, 0, 0, -1],
+            [1, 0, 0, 0],
+        ],
+        dtype=products.dtype,
+    )
     return jnp.tensordot(products, swizzle, 1)
+
 
 def vecvec_invariants(p):
     """Calculates rotation-invariant attributes of a (scalar, bivector) quantity.
@@ -67,6 +71,7 @@ def vecvec_invariants(p):
     result = [p[..., :1], custom_norm(p[..., 1:4])]
     return jnp.concatenate(result, axis=-1)
 
+
 def vecvec_covariants(p):
     """Calculates rotation-covariant attributes of a (scalar, bivector) quantity.
 
@@ -75,6 +80,7 @@ def vecvec_covariants(p):
     """
     dual = bivec_dual(p)
     return dual[..., :3]
+
 
 def bivecvec(p, c):
     """(scalar + bivector)*vector -> vector + trivector
@@ -85,7 +91,7 @@ def bivecvec(p, c):
     (e1, e2, e3, e123).
 
     """
-    products = p[..., jnp.newaxis]*c[..., jnp.newaxis, :]
+    products = p[..., jnp.newaxis] * c[..., jnp.newaxis, :]
     old_shape = jnp.shape(products)
     new_shape = list(old_shape[:-2]) + [12]
     products = jnp.reshape(products, new_shape)
@@ -93,21 +99,25 @@ def bivecvec(p, c):
     # 3 4 5
     # 6 7 8
     # 9 10 11
-    swizzle = jnp.array([
-        [1, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, 0],
-        [0, -1, 0, 0],
-        [1, 0, 0, 0],
-        [0, 0, 0, 1],
-        [0, 0, -1, 0],
-        [0, 0, 0, -1],
-        [1, 0, 0, 0],
-        [0, 0, 0, 1],
-        [0, 0, -1, 0],
-        [0, 1, 0, 0],
-    ], dtype=products.dtype)
+    swizzle = jnp.array(
+        [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, -1, 0, 0],
+            [1, 0, 0, 0],
+            [0, 0, 0, 1],
+            [0, 0, -1, 0],
+            [0, 0, 0, -1],
+            [1, 0, 0, 0],
+            [0, 0, 0, 1],
+            [0, 0, -1, 0],
+            [0, 1, 0, 0],
+        ],
+        dtype=products.dtype,
+    )
     return jnp.tensordot(products, swizzle, 1)
+
 
 def bivecvec_invariants(q):
     """Calculates rotation-invariant attributes of a (vector, trivector) quantity.
@@ -118,6 +128,7 @@ def bivecvec_invariants(q):
     result = [custom_norm(q[..., :3]), q[..., 3:4]]
     return jnp.concatenate(result, axis=-1)
 
+
 def bivecvec_covariants(q):
     """Calculates rotation-covariant attributes of a (vector, trivector) quantity.
 
@@ -125,6 +136,7 @@ def bivecvec_covariants(q):
 
     """
     return q[..., :3]
+
 
 def trivecvec(q, d):
     """(vector + trivector)*vector -> scalar + bivector
@@ -135,7 +147,7 @@ def trivecvec(q, d):
     (1, e12, e13, e23).
 
     """
-    products = q[..., jnp.newaxis]*d[..., jnp.newaxis, :]
+    products = q[..., jnp.newaxis] * d[..., jnp.newaxis, :]
     old_shape = jnp.shape(products)
     new_shape = list(old_shape[:-2]) + [12]
     products = jnp.reshape(products, new_shape)
@@ -143,25 +155,30 @@ def trivecvec(q, d):
     # 3 4 5
     # 6 7 8
     # 9 10 11
-    swizzle = jnp.array([
-        [1, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, 0],
-        [0, -1, 0, 0],
-        [1, 0, 0, 0],
-        [0, 0, 0, 1],
-        [0, 0, -1, 0],
-        [0, 0, 0, -1],
-        [1, 0, 0, 0],
-        [0, 0, 0, 1],
-        [0, 0, -1, 0],
-        [0, 1, 0, 0],
-    ], dtype=products.dtype)
+    swizzle = jnp.array(
+        [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, -1, 0, 0],
+            [1, 0, 0, 0],
+            [0, 0, 0, 1],
+            [0, 0, -1, 0],
+            [0, 0, 0, -1],
+            [1, 0, 0, 0],
+            [0, 0, 0, 1],
+            [0, 0, -1, 0],
+            [0, 1, 0, 0],
+        ],
+        dtype=products.dtype,
+    )
     return jnp.tensordot(products, swizzle, 1)
+
 
 trivecvec_invariants = vecvec_invariants
 
 trivecvec_covariants = vecvec_covariants
+
 
 def mvecmvec(a, b):
     """multivector*multivector -> multivector
@@ -171,77 +188,81 @@ def mvecmvec(a, b):
     with basis (1, e1, e2, e3, e12, e13, e23, e123).
 
     """
-    products = a[..., jnp.newaxis]*b[..., jnp.newaxis, :]
+    products = a[..., jnp.newaxis] * b[..., jnp.newaxis, :]
     old_shape = jnp.shape(products)
     new_shape = list(old_shape[:-2]) + [64]
     products = jnp.reshape(products, new_shape)
-    swizzle = jnp.array([
-        [ 1,  0,  0,  0,  0,  0,  0,  0], # 0
-        [ 0,  1,  0,  0,  0,  0,  0,  0],
-        [ 0,  0,  1,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  1,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  1,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  1,  0,  0],
-        [ 0,  0,  0,  0,  0,  0,  1,  0],
-        [ 0,  0,  0,  0,  0,  0,  0,  1],
-        [ 0,  1,  0,  0,  0,  0,  0,  0], # 8
-        [ 1,  0,  0,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  1,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  1,  0,  0],
-        [ 0,  0,  1,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  1,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  0,  0,  1],
-        [ 0,  0,  0,  0,  0,  0,  1,  0],
-        [ 0,  0,  1,  0,  0,  0,  0,  0], # 16
-        [ 0,  0,  0,  0, -1,  0,  0,  0],
-        [ 1,  0,  0,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  0,  1,  0],
-        [ 0, -1,  0,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  0,  0, -1],
-        [ 0,  0,  0,  1,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0, -1,  0,  0],
-        [ 0,  0,  0,  1,  0,  0,  0,  0], # 24
-        [ 0,  0,  0,  0,  0, -1,  0,  0],
-        [ 0,  0,  0,  0,  0,  0, -1,  0],
-        [ 1,  0,  0,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  0,  0,  1],
-        [ 0, -1,  0,  0,  0,  0,  0,  0],
-        [ 0,  0, -1,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  1,  0,  0,  0],
-        [ 0,  0,  0,  0,  1,  0,  0,  0], # 32
-        [ 0,  0, -1,  0,  0,  0,  0,  0],
-        [ 0,  1,  0,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  0,  0,  1],
-        [-1,  0,  0,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  0, -1,  0],
-        [ 0,  0,  0,  0,  0,  1,  0,  0],
-        [ 0,  0,  0, -1,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  1,  0,  0], # 40
-        [ 0,  0,  0, -1,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  0,  0, -1],
-        [ 0,  1,  0,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  0,  1,  0],
-        [-1,  0,  0,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  0, -1,  0,  0,  0],
-        [ 0,  0,  1,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  0,  1,  0], # 48
-        [ 0,  0,  0,  0,  0,  0,  0,  1],
-        [ 0,  0,  0, -1,  0,  0,  0,  0],
-        [ 0,  0,  1,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0, -1,  0,  0],
-        [ 0,  0,  0,  0,  1,  0,  0,  0],
-        [-1,  0,  0,  0,  0,  0,  0,  0],
-        [ 0, -1,  0,  0,  0,  0,  0,  0],
-        [ 0,  0,  0,  0,  0,  0,  0,  1], # 56
-        [ 0,  0,  0,  0,  0,  0,  1,  0],
-        [ 0,  0,  0,  0,  0, -1,  0,  0],
-        [ 0,  0,  0,  0,  1,  0,  0,  0],
-        [ 0,  0,  0, -1,  0,  0,  0,  0],
-        [ 0,  0,  1,  0,  0,  0,  0,  0],
-        [ 0, -1,  0,  0,  0,  0,  0,  0],
-        [-1,  0,  0,  0,  0,  0,  0,  0],
-    ], dtype=products.dtype)
+    swizzle = jnp.array(
+        [
+            [1, 0, 0, 0, 0, 0, 0, 0],  # 0
+            [0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1],
+            [0, 1, 0, 0, 0, 0, 0, 0],  # 8
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1],
+            [0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0],  # 16
+            [0, 0, 0, 0, -1, 0, 0, 0],
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0],
+            [0, -1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, -1],
+            [0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, -1, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0],  # 24
+            [0, 0, 0, 0, 0, -1, 0, 0],
+            [0, 0, 0, 0, 0, 0, -1, 0],
+            [1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1],
+            [0, -1, 0, 0, 0, 0, 0, 0],
+            [0, 0, -1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0],  # 32
+            [0, 0, -1, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1],
+            [-1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, -1, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, -1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0],  # 40
+            [0, 0, 0, -1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, -1],
+            [0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0],
+            [-1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, -1, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0],  # 48
+            [0, 0, 0, 0, 0, 0, 0, 1],
+            [0, 0, 0, -1, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, -1, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0],
+            [-1, 0, 0, 0, 0, 0, 0, 0],
+            [0, -1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1],  # 56
+            [0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, -1, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, -1, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0],
+            [0, -1, 0, 0, 0, 0, 0, 0],
+            [-1, 0, 0, 0, 0, 0, 0, 0],
+        ],
+        dtype=products.dtype,
+    )
     return jnp.tensordot(products, swizzle, 1)
+
 
 def mvecmvec_invariants(p):
     """Calculates rotation-invariant attributes of a multivector quantity.
@@ -250,9 +271,14 @@ def mvecmvec_invariants(p):
     and bivector components.
 
     """
-    result = [p[..., :1], custom_norm(p[..., 1:4]),
-              custom_norm(p[..., 4:7]), p[..., 7:8]]
+    result = [
+        p[..., :1],
+        custom_norm(p[..., 1:4]),
+        custom_norm(p[..., 4:7]),
+        p[..., 7:8],
+    ]
     return jnp.concatenate(result, axis=-1)
+
 
 def mvecmvec_covariants(p):
     """Calculates rotation-covariant attributes of a multivector quantity.

@@ -4,6 +4,7 @@ from .. import base
 from . import geometric_algebra
 from .internal import AttentionBase
 
+
 class VectorAttention(AttentionBase, base.VectorAttention, pt.nn.Module):
     __doc__ = base.VectorAttention.__doc__
 

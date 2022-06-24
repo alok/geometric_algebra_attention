@@ -3,6 +3,7 @@ import tensorflow as tf
 from .. import base
 from . import geometric_algebra
 
+
 class AttentionBase:
     algebra = geometric_algebra
 
@@ -33,16 +34,22 @@ class AttentionBase:
 
         weight_sets = self._build_weight_definitions(n_dim)
         for (name, defs) in weight_sets.groups.items():
-            weights = [tf.Variable(
-                tf.random.normal(def_.shape, stddev=def_.stdev), name=def_.name,
-                trainable=True)
-                       for def_ in defs]
+            weights = [
+                tf.Variable(
+                    tf.random.normal(def_.shape, stddev=def_.stdev),
+                    name=def_.name,
+                    trainable=True,
+                )
+                for def_ in defs
+            ]
             setattr(self, name, weights)
 
         for (name, def_) in weight_sets.singles.items():
             weight = tf.Variable(
-                tf.random.normal(def_.shape, stddev=def_.stdev), name=def_.name,
-                trainable=True)
+                tf.random.normal(def_.shape, stddev=def_.stdev),
+                name=def_.name,
+                trainable=True,
+            )
             setattr(self, name, weight)
 
     def __call__(self, inputs, return_attention=False):

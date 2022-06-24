@@ -1,12 +1,11 @@
-
 from . import geometric_algebra
 from .LabeledMultivectorAttention import LabeledMultivectorAttention
 from .LabeledVectorAttention import LabeledVectorAttention
-from .MomentumNormalization import MomentumNormalization
 from .MomentumLayerNormalization import MomentumLayerNormalization
-from .MultivectorAttention import MultivectorAttention
+from .MomentumNormalization import MomentumNormalization
 from .Multivector2MultivectorAttention import Multivector2MultivectorAttention
 from .Multivector2Vector import Multivector2Vector
-from .VectorAttention import VectorAttention
+from .MultivectorAttention import MultivectorAttention
 from .Vector2Multivector import Vector2Multivector
 from .Vector2VectorAttention import Vector2VectorAttention
+from .VectorAttention import VectorAttention

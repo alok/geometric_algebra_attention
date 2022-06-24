@@ -1,147 +1,252 @@
-
 import functools
 import unittest
 
 import hypothesis
-from hypothesis.extra import numpy as hnp
 import numpy as np
 import numpy.testing as npt
 import tensorflow as tf
+from hypothesis.extra import numpy as hnp
 from tensorflow import keras
-from geometric_algebra_attention import keras as gala
-
 from test_internals import AllTests, TFRandom, finite_dtype, point_cloud
+
+from geometric_algebra_attention import keras as gala
 
 hypothesis.register_random(TFRandom)
 
+
 class KerasTests(AllTests, unittest.TestCase):
     @functools.lru_cache(maxsize=2)
-    def get_value_layer(self, key=None, rank=2, merge_fun='mean', join_fun='mean',
-                         invar_mode='single', reduce=True):
-        score = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(1)
-        ])
+    def get_value_layer(
+        self,
+        key=None,
+        rank=2,
+        merge_fun="mean",
+        join_fun="mean",
+        invar_mode="single",
+        reduce=True,
+    ):
+        score = keras.models.Sequential(
+            [keras.layers.Dense(2 * self.DIM, activation="relu"), keras.layers.Dense(1)]
+        )
 
-        value = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(self.DIM)
-        ])
+        value = keras.models.Sequential(
+            [
+                keras.layers.Dense(2 * self.DIM, activation="relu"),
+                keras.layers.Dense(self.DIM),
+            ]
+        )
 
         return gala.VectorAttention(
-            score, value, rank=rank, merge_fun=merge_fun,
-            join_fun=join_fun, invariant_mode=invar_mode, reduce=reduce)
+            score,
+            value,
+            rank=rank,
+            merge_fun=merge_fun,
+            join_fun=join_fun,
+            invariant_mode=invar_mode,
+            reduce=reduce,
+        )
 
-    def value_prediction(self, r, v, key=None, rank=2, merge_fun='mean',
-                         join_fun='mean', invar_mode='single', reduce=True):
+    def value_prediction(
+        self,
+        r,
+        v,
+        key=None,
+        rank=2,
+        merge_fun="mean",
+        join_fun="mean",
+        invar_mode="single",
+        reduce=True,
+    ):
         net = self.get_value_layer(key, rank, merge_fun, join_fun, invar_mode, reduce)
         return net((r, v)).numpy()
 
     @functools.lru_cache(maxsize=2)
     def get_value_multivector_layer(
-            self, key=None, rank=2, merge_fun='mean', join_fun='mean',
-            invar_mode='single', reduce=True):
-        score = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(1)
-        ])
+        self,
+        key=None,
+        rank=2,
+        merge_fun="mean",
+        join_fun="mean",
+        invar_mode="single",
+        reduce=True,
+    ):
+        score = keras.models.Sequential(
+            [keras.layers.Dense(2 * self.DIM, activation="relu"), keras.layers.Dense(1)]
+        )
 
-        value = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(self.DIM)
-        ])
+        value = keras.models.Sequential(
+            [
+                keras.layers.Dense(2 * self.DIM, activation="relu"),
+                keras.layers.Dense(self.DIM),
+            ]
+        )
 
         return gala.MultivectorAttention(
-            score, value, rank=rank, merge_fun=merge_fun,
-            join_fun=join_fun, invariant_mode=invar_mode, reduce=reduce)
+            score,
+            value,
+            rank=rank,
+            merge_fun=merge_fun,
+            join_fun=join_fun,
+            invariant_mode=invar_mode,
+            reduce=reduce,
+        )
 
-    def value_multivector_prediction(self, r, v, key=None, rank=2, merge_fun='mean',
-                         join_fun='mean', invar_mode='single', reduce=True):
+    def value_multivector_prediction(
+        self,
+        r,
+        v,
+        key=None,
+        rank=2,
+        merge_fun="mean",
+        join_fun="mean",
+        invar_mode="single",
+        reduce=True,
+    ):
         r = gala.Vector2Multivector()(r)
         net = self.get_value_multivector_layer(
-            key, rank, merge_fun, join_fun, invar_mode, reduce)
+            key, rank, merge_fun, join_fun, invar_mode, reduce
+        )
         return net((r, v)).numpy()
 
     @functools.lru_cache(maxsize=2)
-    def get_vector_layer(self, key=None, rank=2, merge_fun='mean', join_fun='mean',
-                         invar_mode='single', covar_mode='single',
-                         include_normalized_products=False):
-        score = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(1)
-        ])
+    def get_vector_layer(
+        self,
+        key=None,
+        rank=2,
+        merge_fun="mean",
+        join_fun="mean",
+        invar_mode="single",
+        covar_mode="single",
+        include_normalized_products=False,
+    ):
+        score = keras.models.Sequential(
+            [keras.layers.Dense(2 * self.DIM, activation="relu"), keras.layers.Dense(1)]
+        )
 
-        value = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(self.DIM)
-        ])
+        value = keras.models.Sequential(
+            [
+                keras.layers.Dense(2 * self.DIM, activation="relu"),
+                keras.layers.Dense(self.DIM),
+            ]
+        )
 
-        scale = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(1)
-        ])
+        scale = keras.models.Sequential(
+            [keras.layers.Dense(2 * self.DIM, activation="relu"), keras.layers.Dense(1)]
+        )
 
         return gala.Vector2VectorAttention(
-            score, value, scale, rank=rank, merge_fun=merge_fun,
-            join_fun=join_fun, invariant_mode=invar_mode, covariant_mode=covar_mode,
-            include_normalized_products=include_normalized_products)
+            score,
+            value,
+            scale,
+            rank=rank,
+            merge_fun=merge_fun,
+            join_fun=join_fun,
+            invariant_mode=invar_mode,
+            covariant_mode=covar_mode,
+            include_normalized_products=include_normalized_products,
+        )
 
-    def vector_prediction(self, r, v, key=None, rank=2, merge_fun='mean',
-                          join_fun='mean', invar_mode='single', covar_mode='single',
-                          include_normalized_products=False):
+    def vector_prediction(
+        self,
+        r,
+        v,
+        key=None,
+        rank=2,
+        merge_fun="mean",
+        join_fun="mean",
+        invar_mode="single",
+        covar_mode="single",
+        include_normalized_products=False,
+    ):
         net = self.get_vector_layer(
-            key, rank, merge_fun, join_fun, invar_mode, covar_mode, include_normalized_products)
+            key,
+            rank,
+            merge_fun,
+            join_fun,
+            invar_mode,
+            covar_mode,
+            include_normalized_products,
+        )
         return net((r, v)).numpy()
 
     @functools.lru_cache(maxsize=2)
     def get_vector_multivector_layer(
-            self, key=None, rank=2, merge_fun='mean', join_fun='mean',
-            invar_mode='single', covar_mode='single', include_normalized_products=False):
-        score = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(1)
-        ])
+        self,
+        key=None,
+        rank=2,
+        merge_fun="mean",
+        join_fun="mean",
+        invar_mode="single",
+        covar_mode="single",
+        include_normalized_products=False,
+    ):
+        score = keras.models.Sequential(
+            [keras.layers.Dense(2 * self.DIM, activation="relu"), keras.layers.Dense(1)]
+        )
 
-        value = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(self.DIM)
-        ])
+        value = keras.models.Sequential(
+            [
+                keras.layers.Dense(2 * self.DIM, activation="relu"),
+                keras.layers.Dense(self.DIM),
+            ]
+        )
 
-        scale = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(1)
-        ])
+        scale = keras.models.Sequential(
+            [keras.layers.Dense(2 * self.DIM, activation="relu"), keras.layers.Dense(1)]
+        )
 
         return gala.Multivector2MultivectorAttention(
-            score, value, scale, rank=rank, merge_fun=merge_fun,
-            join_fun=join_fun, invariant_mode=invar_mode, covariant_mode=covar_mode,
-            include_normalized_products=include_normalized_products)
+            score,
+            value,
+            scale,
+            rank=rank,
+            merge_fun=merge_fun,
+            join_fun=join_fun,
+            invariant_mode=invar_mode,
+            covariant_mode=covar_mode,
+            include_normalized_products=include_normalized_products,
+        )
 
     def vector_multivector_prediction(
-            self, r, v, key=None, rank=2, merge_fun='mean',
-            join_fun='mean', invar_mode='single', covar_mode='single',
-            include_normalized_products=False):
+        self,
+        r,
+        v,
+        key=None,
+        rank=2,
+        merge_fun="mean",
+        join_fun="mean",
+        invar_mode="single",
+        covar_mode="single",
+        include_normalized_products=False,
+    ):
         r = gala.Vector2Multivector()(r)
         net = self.get_vector_multivector_layer(
-            key, rank, merge_fun, join_fun, invar_mode, covar_mode, include_normalized_products)
+            key,
+            rank,
+            merge_fun,
+            join_fun,
+            invar_mode,
+            covar_mode,
+            include_normalized_products,
+        )
         return gala.Multivector2Vector()(net((r, v))).numpy()
 
     @functools.lru_cache(maxsize=2)
     def get_label_vector_layer(self, key=None):
-        score = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(1)
-        ])
+        score = keras.models.Sequential(
+            [keras.layers.Dense(2 * self.DIM, activation="relu"), keras.layers.Dense(1)]
+        )
 
-        value = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(self.DIM)
-        ])
+        value = keras.models.Sequential(
+            [
+                keras.layers.Dense(2 * self.DIM, activation="relu"),
+                keras.layers.Dense(self.DIM),
+            ]
+        )
 
-        scale = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(1)
-        ])
+        scale = keras.models.Sequential(
+            [keras.layers.Dense(2 * self.DIM, activation="relu"), keras.layers.Dense(1)]
+        )
 
         return gala.LabeledVectorAttention(score, value, scale)
 
@@ -151,20 +256,20 @@ class KerasTests(AllTests, unittest.TestCase):
 
     @functools.lru_cache(maxsize=2)
     def get_label_multivector_layer(self, key=None):
-        score = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(1)
-        ])
+        score = keras.models.Sequential(
+            [keras.layers.Dense(2 * self.DIM, activation="relu"), keras.layers.Dense(1)]
+        )
 
-        value = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(self.DIM)
-        ])
+        value = keras.models.Sequential(
+            [
+                keras.layers.Dense(2 * self.DIM, activation="relu"),
+                keras.layers.Dense(self.DIM),
+            ]
+        )
 
-        scale = keras.models.Sequential([
-            keras.layers.Dense(2*self.DIM, activation='relu'),
-            keras.layers.Dense(1)
-        ])
+        scale = keras.models.Sequential(
+            [keras.layers.Dense(2 * self.DIM, activation="relu"), keras.layers.Dense(1)]
+        )
 
         return gala.LabeledMultivectorAttention(score, value, scale)
 
@@ -174,13 +279,14 @@ class KerasTests(AllTests, unittest.TestCase):
         return gala.Multivector2Vector()(net((v2, (r, v)))).numpy()
 
     @hypothesis.given(
-        hnp.arrays(np.float32, hnp.array_shapes(min_dims=2), elements=finite_dtype))
+        hnp.arrays(np.float32, hnp.array_shapes(min_dims=2), elements=finite_dtype)
+    )
     def basic_momentum(self, x):
         hypothesis.assume(np.all(np.abs(x) > 1e-3))
         hypothesis.assume(len(np.unique(np.round(x, 3))) > 1)
         hypothesis.assume(x[..., 0].size > 1)
 
-        layer = gala.MomentumNormalization(momentum=.1)
+        layer = gala.MomentumNormalization(momentum=0.1)
         mean = lambda arr: np.mean(arr, axis=tuple(range(0, arr.ndim - 1)))
         std = lambda arr: np.std(arr, axis=tuple(range(0, arr.ndim - 1)))
         hypothesis.assume(np.all(std(x) > 1e-3))
@@ -192,17 +298,18 @@ class KerasTests(AllTests, unittest.TestCase):
         for _ in range(32):
             output = f(x)
 
-        npt.assert_allclose(mean(output), 0., rtol=1e-2, atol=1e-2)
-        npt.assert_allclose(std(output), 1., rtol=1e-2, atol=1e-2)
+        npt.assert_allclose(mean(output), 0.0, rtol=1e-2, atol=1e-2)
+        npt.assert_allclose(std(output), 1.0, rtol=1e-2, atol=1e-2)
 
     @hypothesis.given(
-        hnp.arrays(np.float32, hnp.array_shapes(min_dims=2), elements=finite_dtype))
+        hnp.arrays(np.float32, hnp.array_shapes(min_dims=2), elements=finite_dtype)
+    )
     def basic_momentum_layer(self, x):
         hypothesis.assume(np.all(np.abs(x) > 1e-3))
         hypothesis.assume(len(np.unique(np.round(x, 3))) > 1)
         hypothesis.assume(x[..., 0].size > 1)
 
-        layer = gala.MomentumLayerNormalization(momentum=.1)
+        layer = gala.MomentumLayerNormalization(momentum=0.1)
         norm = lambda arr: np.mean(np.linalg.norm(arr, axis=-1))
 
         @tf.function
@@ -212,14 +319,14 @@ class KerasTests(AllTests, unittest.TestCase):
         for _ in range(32):
             output = f(x)
 
-        npt.assert_allclose(norm(output), 1., rtol=1e-2, atol=1e-2)
+        npt.assert_allclose(norm(output), 1.0, rtol=1e-2, atol=1e-2)
 
     @hypothesis.given(point_cloud(weights=True))
     def basic_mask(self, cloud):
         (r, v, w) = cloud
         mask = np.argsort(w) > 1
 
-        layer = self.get_value_layer('basic_mask', reduce=False)
+        layer = self.get_value_layer("basic_mask", reduce=False)
         first_result = layer((r, v), mask=mask).numpy()
         r[~mask] += 1
         v[~mask] += 1
@@ -227,5 +334,6 @@ class KerasTests(AllTests, unittest.TestCase):
         second_result[~mask] = first_result[~mask]
         npt.assert_allclose(first_result, second_result)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

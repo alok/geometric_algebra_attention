@@ -1,4 +1,3 @@
-
 import functools
 import operator
 
@@ -7,6 +6,7 @@ import jax.numpy as jnp
 
 from .. import base
 from . import geometric_algebra
+
 
 class AttentionBase:
     algebra = geometric_algebra
@@ -58,12 +58,13 @@ class AttentionBase:
         weight_sets = self._build_weight_definitions(self.n_dim)
         for (name, defs) in weight_sets.groups.items():
             weights = [
-                jax.random.normal(rng, shape=def_.shape)*def_.stdev
-                for (def_, rng) in zip(defs, rngs(rng))]
+                jax.random.normal(rng, shape=def_.shape) * def_.stdev
+                for (def_, rng) in zip(defs, rngs(rng))
+            ]
             setattr(self, name, weights)
 
         for ((name, def_), rng) in zip(weight_sets.singles.items(), rngs(rng_singles)):
-            weight = jax.random.normal(rng, shape=def_.shape)*def_.stdev
+            weight = jax.random.normal(rng, shape=def_.shape) * def_.stdev
             setattr(self, name, weight)
 
         return v_shape, self.params
@@ -82,7 +83,7 @@ class AttentionBase:
         shape = old_shape[:dims] + (last_dim,)
         scores = self.math.reshape(scores, shape)
         attention = self.math.reshape(self.math.softmax(scores), old_shape)
-        output = self.math.sum(attention*values, reduce_axes)
+        output = self.math.sum(attention * values, reduce_axes)
 
         return attention, output
 
@@ -95,8 +96,8 @@ class AttentionBase:
             result[name] = getattr(self, name)
         for name in weight_sets.singles:
             result[name] = getattr(self, name)
-        result['score_net_params'] = self.score_net_params
-        result['value_net_params'] = self.value_net_params
+        result["score_net_params"] = self.score_net_params
+        result["value_net_params"] = self.value_net_params
         return result
 
     @params.setter
@@ -112,9 +113,9 @@ class AttentionBase:
         these functions.
         """
         kwargs = {}
-        if getattr(self, '_last_rng', None) is not None:
-            mixin = functools.reduce(operator.mul, map(int, 'score'.encode()))
-            kwargs['rng'] = jax.random.fold_in(self._last_rng, mixin)
+        if getattr(self, "_last_rng", None) is not None:
+            mixin = functools.reduce(operator.mul, map(int, "score".encode()))
+            kwargs["rng"] = jax.random.fold_in(self._last_rng, mixin)
         return functools.partial(self.score_net_fn, self.score_net_params, **kwargs)
 
     @score_net.setter
@@ -129,9 +130,9 @@ class AttentionBase:
         these functions.
         """
         kwargs = {}
-        if getattr(self, '_last_rng', None) is not None:
-            mixin = functools.reduce(operator.mul, map(int, 'value'.encode()))
-            kwargs['rng'] = jax.random.fold_in(self._last_rng, mixin)
+        if getattr(self, "_last_rng", None) is not None:
+            mixin = functools.reduce(operator.mul, map(int, "value".encode()))
+            kwargs["rng"] = jax.random.fold_in(self._last_rng, mixin)
         return functools.partial(self.value_net_fn, self.value_net_params, **kwargs)
 
     @value_net.setter

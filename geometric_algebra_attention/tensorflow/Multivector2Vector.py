@@ -1,5 +1,5 @@
-
 from .. import base
+
 
 class Multivector2Vector(base.Multivector2Vector):
     __doc__ = base.Multivector2Vector.__doc__

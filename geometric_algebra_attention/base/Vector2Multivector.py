@@ -1,4 +1,3 @@
-
 class Vector2Multivector:
     """Convert a 3D vector representation into a multivector representation.
 

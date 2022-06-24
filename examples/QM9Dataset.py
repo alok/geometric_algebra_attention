@@ -7,56 +7,83 @@ import subprocess
 import tarfile
 
 import flowws
-from flowws import Argument as Arg
 import gtar
 import numpy as np
+from flowws import Argument as Arg
 
-ATTR_NAMES = ['tag', 'index', 'A', 'B', 'C', 'mu', 'alpha', 'homo',
-              'lumo', 'gap', 'r2', 'zpve', 'U0', 'U', 'H', 'G', 'Cv']
+ATTR_NAMES = [
+    "tag",
+    "index",
+    "A",
+    "B",
+    "C",
+    "mu",
+    "alpha",
+    "homo",
+    "lumo",
+    "gap",
+    "r2",
+    "zpve",
+    "U0",
+    "U",
+    "H",
+    "G",
+    "Cv",
+]
+
 
 @flowws.add_stage_arguments
 class QM9Dataset(flowws.Stage):
-    """Load the QM9 dataset.
-
-    """
+    """Load the QM9 dataset."""
 
     ARGS = [
-        Arg('cache_dir', '-c', str, '/tmp',
-            help='Directory to store dataset'),
-        Arg('y_attribute', '-y', str, 'U0',
-            help='Attribute to expose for prediction'),
-        Arg('n_train', '-n', int, 100000,
-            help='Number of examples to use for training set'),
-        Arg('n_val', None, int, 1000,
-            help='Number of examples to use for validation set'),
-        Arg('seed', '-s', int, 13,
-            help='Random number seed to use'),
+        Arg("cache_dir", "-c", str, "/tmp", help="Directory to store dataset"),
+        Arg("y_attribute", "-y", str, "U0", help="Attribute to expose for prediction"),
+        Arg(
+            "n_train",
+            "-n",
+            int,
+            100000,
+            help="Number of examples to use for training set",
+        ),
+        Arg(
+            "n_val",
+            None,
+            int,
+            1000,
+            help="Number of examples to use for validation set",
+        ),
+        Arg("seed", "-s", int, 13, help="Random number seed to use"),
     ]
 
     def run(self, scope, storage):
-        random.seed(self.arguments['seed'])
+        random.seed(self.arguments["seed"])
 
         gtar_fname = self._get_gtar_filename()
 
         max_atoms = 0
         type_map = collections.defaultdict(lambda: len(type_map))
-        type_map['NULL']
+        type_map["NULL"]
 
         dataset = {}
-        with gtar.GTAR(gtar_fname, 'r') as traj:
+        with gtar.GTAR(gtar_fname, "r") as traj:
             for (frame, (type_names, types, positions, attrs)) in traj.recordsNamed(
-                    ['type_names.json', 'type', 'position', 'attributes.json']):
+                ["type_names.json", "type", "position", "attributes.json"]
+            ):
                 type_names = json.loads(type_names)
                 attrs = json.loads(attrs)
 
                 new_types = [type_map[type_names[t]] for t in types]
-                dataset[frame] = (positions, new_types,
-                                  attrs[self.arguments['y_attribute']])
+                dataset[frame] = (
+                    positions,
+                    new_types,
+                    attrs[self.arguments["y_attribute"]],
+                )
                 max_atoms = max(max_atoms, len(types))
 
         assert len(dataset)
-        N_train = self.arguments['n_train']
-        N_val = self.arguments['n_val']
+        N_train = self.arguments["n_train"]
+        N_val = self.arguments["n_val"]
 
         frames = list(sorted(dataset))
         random.shuffle(frames)
@@ -67,9 +94,9 @@ class QM9Dataset(flowws.Stage):
         num_types = len(type_map)
 
         datasets = {}
-        for name in ['train', 'val', 'test']:
+        for name in ["train", "val", "test"]:
             dset_xs, dset_ts, dset_ys = [], [], []
-            frames = locals()['{}_frames'.format(name)]
+            frames = locals()["{}_frames".format(name)]
             for frame in frames:
                 (xs, ts, ys) = self.get_encoding(dataset[frame], max_atoms, type_map)
                 dset_xs.append(xs)
@@ -82,30 +109,30 @@ class QM9Dataset(flowws.Stage):
 
             datasets[name] = (dset_xs, dset_ts, dset_ys)
 
-        yref = datasets['train'][-1]
+        yref = datasets["train"][-1]
         mu = np.mean(yref)
         sigma = np.std(yref)
 
         for (key, vals) in list(datasets.items()):
             vals = list(vals)
-            vals[-1] = (vals[-1] - mu)/sigma
+            vals[-1] = (vals[-1] - mu) / sigma
             datasets[key] = vals
 
-        scope['y_scale'] = sigma
-        scope['neighborhood_size'] = max_atoms
-        scope['num_types'] = num_types
-        scope['x_train'] = datasets['train'][:2]
-        scope['y_train'] = datasets['train'][-1]
-        scope['x_test'] = datasets['test'][:2]
-        scope['y_test'] = datasets['test'][-1]
-        scope['validation_data'] = (datasets['val'][:2], datasets['val'][-1])
-        scope['type_map'] = type_map
-        scope.setdefault('metrics', []).extend(['mae'])
+        scope["y_scale"] = sigma
+        scope["neighborhood_size"] = max_atoms
+        scope["num_types"] = num_types
+        scope["x_train"] = datasets["train"][:2]
+        scope["y_train"] = datasets["train"][-1]
+        scope["x_test"] = datasets["test"][:2]
+        scope["y_test"] = datasets["test"][-1]
+        scope["validation_data"] = (datasets["val"][:2], datasets["val"][-1])
+        scope["type_map"] = type_map
+        scope.setdefault("metrics", []).extend(["mae"])
 
     def _convert_to_gtar(self, tar_name, gtar_name):
         with contextlib.ExitStack() as stack:
-            tf = stack.enter_context(tarfile.open(tar_name, 'r'))
-            traj = stack.enter_context(gtar.GTAR(gtar_name, 'w'))
+            tf = stack.enter_context(tarfile.open(tar_name, "r"))
+            traj = stack.enter_context(gtar.GTAR(gtar_name, "w"))
 
             file_count = 0
             for entry in tf:
@@ -114,13 +141,13 @@ class QM9Dataset(flowws.Stage):
                     file_count += 1
 
     def _get_gtar_filename(self):
-        url = 'https://figshare.com/ndownloader/files/3195389'
-        source_fname = 'dsgdb9nsd.xyz.tar.bz2'
-        dest_fname = os.path.join(self.arguments['cache_dir'], 'qm9_data.zip')
+        url = "https://figshare.com/ndownloader/files/3195389"
+        source_fname = "dsgdb9nsd.xyz.tar.bz2"
+        dest_fname = os.path.join(self.arguments["cache_dir"], "qm9_data.zip")
 
         if not os.path.exists(dest_fname):
-            output_name = os.path.join(self.arguments['cache_dir'], source_fname)
-            command = ['wget', '-c', '-O', output_name, url]
+            output_name = os.path.join(self.arguments["cache_dir"], source_fname)
+            command = ["wget", "-c", "-O", output_name, url]
             subprocess.check_call(command)
             self._convert_to_gtar(output_name, dest_fname)
             os.remove(output_name)
@@ -128,13 +155,13 @@ class QM9Dataset(flowws.Stage):
         return dest_fname
 
     def _save_entry(self, index, xyz_file, traj):
-        text = xyz_file.read().decode().replace('*^', 'e')
+        text = xyz_file.read().decode().replace("*^", "e")
         lines = text.splitlines()
 
         atom_count = int(lines[0])
         attr_line = lines[1]
         attrs = dict(zip(ATTR_NAMES, attr_line.split()))
-        coord_lines = lines[2:2 + atom_count]
+        coord_lines = lines[2 : 2 + atom_count]
 
         atom_type_names = []
         atom_coords = []
@@ -147,20 +174,20 @@ class QM9Dataset(flowws.Stage):
         type_map = {t: i for (i, t) in enumerate(all_types)}
         types = [type_map[t] for t in atom_type_names]
 
-        prefix = 'frames/{}/'.format(index)
-        traj.writePath(prefix + 'attributes.json', json.dumps(attrs))
-        traj.writePath(prefix + 'type_names.json', json.dumps(all_types))
-        traj.writePath(prefix + 'type.u32.ind', types)
-        traj.writePath(prefix + 'position.f32.ind', atom_coords)
+        prefix = "frames/{}/".format(index)
+        traj.writePath(prefix + "attributes.json", json.dumps(attrs))
+        traj.writePath(prefix + "type_names.json", json.dumps(all_types))
+        traj.writePath(prefix + "type.u32.ind", types)
+        traj.writePath(prefix + "position.f32.ind", atom_coords)
 
     @staticmethod
     def get_encoding(data, max_atoms, type_map):
         (rs, ts, ys) = data
         types = np.zeros(max_atoms, dtype=np.uint32)
-        types[:len(ts)] = ts
+        types[: len(ts)] = ts
         types_onehot = np.eye((len(type_map)))[types]
 
         positions = np.zeros((max_atoms, 3))
-        positions[:len(rs)] = rs
+        positions[: len(rs)] = rs
 
         return positions, types_onehot, float(ys)

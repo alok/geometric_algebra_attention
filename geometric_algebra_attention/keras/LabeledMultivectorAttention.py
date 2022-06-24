@@ -1,10 +1,12 @@
-
 from tensorflow import keras
 
 from .. import base
 from .Multivector2MultivectorAttention import Multivector2MultivectorAttention
 
-class LabeledMultivectorAttention(base.LabeledMultivectorAttention, Multivector2MultivectorAttention):
+
+class LabeledMultivectorAttention(
+    base.LabeledMultivectorAttention, Multivector2MultivectorAttention
+):
     __doc__ = base.LabeledMultivectorAttention.__doc__
 
     def build(self, input_shape):
@@ -19,4 +21,7 @@ class LabeledMultivectorAttention(base.LabeledMultivectorAttention, Multivector2
         (child_mask, other_mask) = mask
         return child_mask
 
-keras.utils.get_custom_objects()['LabeledMultivectorAttention'] = LabeledMultivectorAttention
+
+keras.utils.get_custom_objects()[
+    "LabeledMultivectorAttention"
+] = LabeledMultivectorAttention

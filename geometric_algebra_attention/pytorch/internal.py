@@ -3,12 +3,15 @@ import torch as pt
 from .. import base
 from . import geometric_algebra
 
+
 def keepdims_decorator(f):
     def wrapped(*args, **kwargs):
-        if 'keepdims' in kwargs:
-            kwargs['keepdim'] = kwargs.pop('keepdims')
+        if "keepdims" in kwargs:
+            kwargs["keepdim"] = kwargs.pop("keepdims")
         return f(*args, **kwargs)
+
     return wrapped
+
 
 class AttentionBase:
     algebra = geometric_algebra
@@ -37,12 +40,16 @@ class AttentionBase:
         """Initialize the weights for this layer."""
         weight_sets = self._build_weight_definitions(self.n_dim)
         for (name, defs) in weight_sets.groups.items():
-            weights = pt.nn.ParameterList([
-                pt.nn.Parameter(pt.normal(0, pt.ones(*def_.shape)*def_.stdev)) for def_ in defs])
+            weights = pt.nn.ParameterList(
+                [
+                    pt.nn.Parameter(pt.normal(0, pt.ones(*def_.shape) * def_.stdev))
+                    for def_ in defs
+                ]
+            )
             setattr(self, name, weights)
 
         for (name, def_) in weight_sets.singles.items():
-            weight = pt.nn.Parameter(pt.normal(0, pt.ones(*def_.shape)*def_.stdev))
+            weight = pt.nn.Parameter(pt.normal(0, pt.ones(*def_.shape) * def_.stdev))
             setattr(self, name, weight)
 
     def _calculate_attention(self, scores, values, old_shape):
@@ -52,9 +59,9 @@ class AttentionBase:
         scores = self.math.reshape(scores, shape)
         attention = self.math.reshape(self.math.softmax(scores, -1), old_shape)
         if reduce_axes:
-            output = self.math.sum(attention*values, reduce_axes)
+            output = self.math.sum(attention * values, reduce_axes)
         else:
-            output = attention*values
+            output = attention * values
 
         return attention, output
 
